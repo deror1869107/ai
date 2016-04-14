@@ -27,6 +27,9 @@ class ReflexAgent(Agent):
       it in any way you see fit, so long as you don't touch our method
       headers.
     """
+    def __init__(self):
+        self.hasgone=[]
+        self.z=(0,0)
 
 
     def getAction(self, gameState):
@@ -49,7 +52,8 @@ class ReflexAgent(Agent):
         #print chosenIndex
 
         "Add more of your code here if you want to"
-
+        waytovec = {'North':(0,1), 'South':(0,-1), 'East':(1,0), 'West':(-1,0), 'Stop':(0,0)}
+        self.hasgone.append(waytovec[legalMoves[chosenIndex]])
         return legalMoves[chosenIndex]
 
     def evaluationFunction(self, currentGameState, action):
@@ -75,15 +79,41 @@ class ReflexAgent(Agent):
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "[Project 3] YOUR CODE HERE"
-        GhostMove = [(0, 1), (1, 0), (0, -1), (-1, 0), (0, 0)]
-        GhostPos = newGhostStates[0].getPosition()
-        newGhostPos = [(int(GhostPos[0] + x), int(GhostPos[1] + y)) for (x, y) in GhostMove]
-        if newPos in newGhostPos:
-          return -100000
-        if action == Directions.STOP:
-          return -20000
+        direc = [(0,0), (0,1), (0,-1), (1,0), (-1, 0)]
+        ghostpos = [i.getPosition() for i in newGhostStates]
+        dangerzone = [(x+i, y+j) for (x, y) in ghostpos for (i,j) in direc]
+        x=100000000
+        Food = list(currentGameState.getFood())
+        if not Food[self.z[0]][self.z[1]]:
+            for i in range(len(Food)):
+                for j in range(len(Food[0])):
+                    if Food[i][j]:
+                        if manhattanDistance(newPos, (i,j))<x:
+                            self.z=(i,j)
+                            x=manhattanDistance(newPos, self.z)
+        fooddirec=[]
+        if newPos[0]>self.z[0]:
+            fooddirec.append("West")
+        if newPos[0]<self.z[0]:
+            fooddirec.append("East")
+        if newPos[1]>self.z[1]:
+            fooddirec.append("South")
+        if newPos[1]<self.z[1]:
+            fooddirec.append("North")
+        if newPos in dangerzone:
+            k= -100000
+        elif currentGameState.hasFood(newPos[0], newPos[1]):
+            k= 50000
+        elif action == Directions.STOP:
+            k= -2000
+        elif action in fooddirec:
+            k=200
+        elif newPos not in self.hasgone:
+            k= 8
+        else:
+            k= -3
+        return successorGameState.getScore()+k
 
-        return successorGameState.getScore()
 
 def scoreEvaluationFunction(currentGameState):
     """
