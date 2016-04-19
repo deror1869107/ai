@@ -244,7 +244,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         "*** YOUR CODE HERE ***"
         util.raiseNotDefined()
 
-    
+
 
 def betterEvaluationFunction(currentGameState):
     """
@@ -279,7 +279,7 @@ def betterEvaluationFunction(currentGameState):
             scaredghost.append(i.getPosition())
     """
     z : the nearest food position
-    x : the manhattanDistance to z 
+    x : the manhattanDistance to z
     h : fix x
     """
     h=0
@@ -306,7 +306,7 @@ def betterEvaluationFunction(currentGameState):
     x4=0
     for i in newScaredTimes:
         if i >0:
-            x4+=25
+            x4+=29
     '''
     x2 : chance the pacman might be eaten
     x3 : the manhattanDistance to scared ghosts
@@ -317,9 +317,18 @@ def betterEvaluationFunction(currentGameState):
     x1=k
     x2=0
     if newPos in dangerzone:
-        x2 = -55
+        x2 = -60
     x3=-sum([util.manhattanDistance(newPos, y) for y in scaredghost])
-    a=-x*0.3 +x1  + x2 + x3*0.3 + x4 +successorGameState.getScore()
+    '''
+    x  :when there is no food  nearby, get close to food will get higher score
+    x1 :the smaller the number of food, the higher the score it is
+    x2 :when the state is too close to the ghost, x2 will make the value smaller
+    x3 :get close to scared ghost will get somewhat higher grade
+    x4 :the more ghost get scared, the higher grade you get
+    x2 and x4 :the highest value for x4 is 58 < x2 = 60,
+    which will make the pacman's move less risky
+    '''
+    a=-x*0.3 +x1  + x2 + x3*0.7 + x4 +successorGameState.getScore()
     return a
 
 # Abbreviation
