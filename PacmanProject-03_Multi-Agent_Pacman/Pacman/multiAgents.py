@@ -1,3 +1,4 @@
+
 # multiAgents.py
 # --------------
 # Licensing Information:  You are free to use or extend these projects for
@@ -243,6 +244,8 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         "*** YOUR CODE HERE ***"
         util.raiseNotDefined()
 
+    
+
 def betterEvaluationFunction(currentGameState):
     """
       Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable
@@ -252,8 +255,72 @@ def betterEvaluationFunction(currentGameState):
     """
 
     "[Project 3] YOUR CODE HERE"
-
-    util.raiseNotDefined()
+    """
+    ghostpos : ghost positions in current state
+    scaredghost : scared ghost positions in current state
+    dangerzone : the position a ghost can get in two moves
+    """
+    successorGameState = currentGameState
+    newPos = successorGameState.getPacmanPosition()
+    newFood = successorGameState.getFood()
+    newGhostStates = successorGameState.getGhostStates()
+    newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
+    ghostpos =[]
+    scaredghost =[]
+    dangerzone =[]
+    for i in newGhostStates:
+        if newScaredTimes[newGhostStates.index(i)]==0:
+            ghostpos.append(i.getPosition())
+            for state in [currentGameState.generateSuccessor(newGhostStates.index(i), way) for way in currentGameState.getLegalActions(newGhostStates.index(i))]:
+                for state2 in [state.generateSuccessor(newGhostStates.index(i), way2) for way2 in state.getLegalActions(newGhostStates.index(i))]:
+                    for a in state2.getGhostStates():
+                        dangerzone.append(a.getPosition())
+        else:
+            scaredghost.append(i.getPosition())
+    """
+    z : the nearest food position
+    x : the manhattanDistance to z 
+    h : fix x
+    """
+    h=0
+    Food = list(currentGameState.getFood())
+    z=(0,0)
+    x=999999999999
+    for i in range(len(Food)):
+        for j in range(len(Food[0])):
+            if Food[i][j]:
+                h+=1
+                if manhattanDistance(newPos, (i,j))<x:
+                    z=(i,j)
+                    x=util.manhattanDistance(newPos, z)
+    """
+    k : the number of food in this state
+    x : k
+    x4 : the number of scared ghost
+    """
+    k=0
+    for i in Food:
+        for j in i:
+            if j:
+                k-=1
+    x4=0
+    for i in newScaredTimes:
+        if i >0:
+            x4+=25
+    '''
+    x2 : chance the pacman might be eaten
+    x3 : the manhattanDistance to scared ghosts
+    a  : the value of this leaf
+    '''
+    if h==0:
+        x=10
+    x1=k
+    x2=0
+    if newPos in dangerzone:
+        x2 = -55
+    x3=-sum([util.manhattanDistance(newPos, y) for y in scaredghost])
+    a=-x*0.3 +x1  + x2 + x3*0.3 + x4 +successorGameState.getScore()
+    return a
 
 # Abbreviation
 better = betterEvaluationFunction
