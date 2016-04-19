@@ -280,13 +280,16 @@ def betterEvaluationFunction(currentGameState):
     """
     z : the nearest food position
     x : the manhattanDistance to z 
+    h : fix x
     """
+    h=0
     Food = list(currentGameState.getFood())
     z=(0,0)
     x=999999999999
     for i in range(len(Food)):
         for j in range(len(Food[0])):
             if Food[i][j]:
+                h+=1
                 if manhattanDistance(newPos, (i,j))<x:
                     z=(i,j)
                     x=util.manhattanDistance(newPos, z)
@@ -309,6 +312,8 @@ def betterEvaluationFunction(currentGameState):
     x3 : the manhattanDistance to scared ghosts
     a  : the value of this leaf
     '''
+    if h==0:
+        x=10
     x1=k
     x2=0
     if newPos in dangerzone:
