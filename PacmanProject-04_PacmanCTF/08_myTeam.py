@@ -143,25 +143,26 @@ class myAgent(ApproximateQAgent):
         features = util.Counter()
         successor = state.generateSuccessor(self.index, action)
         features["bias"] = 1.0
-
+        enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
         # compute the location of pacman after he takes the action
         x, y = state.getAgentPosition(self.index)
         dx, dy = Actions.directionToVector(action)
         next_x, next_y = int(x + dx), int(y + dy)
         myState = successor.getAgentState(self.index)
         myPos = myState.getPosition()
+        features['#-of-food'] = len([i for i in food if i])
 
         features['onDefense'] = 1
         if myState.isPacman: features['onDefense'] = 0
 
         # count the number of ghosts 1-step away
-        features["#-of-ghosts-1-step-away"] = sum((next_x, next_y) in Actions.getLegalNeighbors(g, walls) for g in ghosts if g)
-        if myState.isPacman:features['ghost-distance']*=-1
+        features["#-of-ghosts-1-step-away"] = sum((next_x, next_y) in Actions.getLegalNeighbors(g.getPosition(), walls) for g in enemies if g and not g.isPacman)
+        
 
         features["own-flag"]=myState.ownFlag
+#        features['score']=myState.getScore()/100.0
 
 
-        enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
         invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
         features['numInvaders'] = len(invaders)
         if len(invaders) > 0:
@@ -185,7 +186,7 @@ class myAgent(ApproximateQAgent):
             features['scaredDistance'] = min(dists)
 
         # if there is no danger of ghosts then add the food feature
-        if not features["#-of-ghosts-1-step-away"] and food[next_x][next_y]:
+        if not features["#-of-ghosts-1-step-away"]:
             features["eats-food"] = 1.0
 
         dist = closestFood((next_x, next_y), food, walls)
