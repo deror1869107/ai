@@ -244,7 +244,7 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
         "*** YOUR CODE HERE ***"
         util.raiseNotDefined()
 
-    
+
 
 def betterEvaluationFunction(currentGameState):
     """
@@ -279,7 +279,7 @@ def betterEvaluationFunction(currentGameState):
             scaredghost.append(i.getPosition())
     """
     z : the nearest food position
-    x : the manhattanDistance to z 
+    x : the manhattanDistance to z
     h : fix x
     """
     h=0
@@ -320,7 +320,7 @@ def betterEvaluationFunction(currentGameState):
         x2 = -60
     x3=-sum([util.manhattanDistance(newPos, y) for y in scaredghost])
     '''
-    x  :when there is no food  nearby, get close to food will get higher score  
+    x  :when there is no food  nearby, get close to food will get higher score
     x1 :the smaller the number of food, the higher the score it is
     x2 :when the state is too close to the ghost, x2 will make the value smaller
     x3 :get close to scared ghost will get somewhat higher grade
