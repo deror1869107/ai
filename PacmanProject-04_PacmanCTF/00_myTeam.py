@@ -135,8 +135,15 @@ class myAgent(ApproximateQAgent):
         return successor
 
     def getFeatures(self, state, action):
+        feats = util.Counter()
+        feats[hash(state)] = 1.0
+        return feats
+
+
+    def getFeatures1(self, state, action):
         # extract the grid of food and wall locations and get the ghost locations
         food = self.getFood(state)
+        deffoood = self.getFoodYouAreDefending(state)
         walls = state.getWalls()
         #ghosts = self.getGhostPositions()
         ghosts = [ state.getAgentPosition(x) for x in self.getOpponents(state)]
@@ -150,13 +157,20 @@ class myAgent(ApproximateQAgent):
         next_x, next_y = int(x + dx), int(y + dy)
         myState = successor.getAgentState(self.index)
         myPos = myState.getPosition()
-        features['#-of-food'] = len([i for i in food if i])
-
+        for i in food:
+            for j in i:
+                if j:
+                    features['#-of-food'] +=1
+        for i in deffoood:
+            for j in i:
+                if j:
+                    features['#-of-def-food']+=1
         features['onDefense'] = 1
         if myState.isPacman: features['onDefense'] = 0
 
         # count the number of ghosts 1-step away
-        features["#-of-ghosts-1-step-away"] = sum((next_x, next_y) in Actions.getLegalNeighbors(g.getPosition(), walls) for g in enemies if g and not g.isPacman)
+        if myState.isPacman:
+          features["#-of-ghosts-1-step-away"] = sum((next_x, next_y) in Actions.getLegalNeighbors(g.getPosition(), walls) for g in enemies if g and not g.isPacman)
         
 
         features["own-flag"]=myState.ownFlag
@@ -168,8 +182,9 @@ class myAgent(ApproximateQAgent):
         if len(invaders) > 0:
             invdists = [self.getMazeDistance(myPos, a.getPosition()) for a in invaders]
             features['invaderDistance'] = min(invdists)
-        scardemy = [i for i in enemies if not i.isPacman and i.scaredTimer]
-        features['num-scard-emy']= len(scardemy)
+        scardemy = [i for i in enemies if not i.isPacman and i.scaredTimer]        
+        if myState.isPacman:  
+          features['num-scard-emy']= len(scardemy)
         features['totalscared']=0
         if len(scardemy) > 0:
             scadists = [self.getMazeDistance(myPos, a.getPosition()) for a in scardemy]
@@ -184,7 +199,7 @@ class myAgent(ApproximateQAgent):
         if len(scardemy) > 0:
             dists = [self.getMazeDistance(myPos, a.getPosition()) for a in scardemy]
             features['scaredDistance'] = min(dists)
-
+            
         # if there is no danger of ghosts then add the food feature
         if not features["#-of-ghosts-1-step-away"]:
             features["eats-food"] = 1.0
