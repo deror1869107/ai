@@ -1,1 +1,11 @@
-goAttack 0.0 
+goAttack -1.62843363313e-11
+successorScore 3.69333764573e-09
+has-food -2.05784771096e-10
+distanceToFood -1.94197771185e-10
+in-danger -8.5667663762e-13
+own-flag -3.63856995441e-12
+critical-point -8.82561259118e-11
+get-flag -3.83442689389e-10
+eat-pacman -3.37614795796e-10
+get-caps -2.82629637241e-10
+bias -5.80148452745e-11

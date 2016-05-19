@@ -102,100 +102,62 @@ class myAgent(ApproximateQAgent):
 
 
     def value(self, state, index, a, b):
-        mindex=index%6
-        if index/6 >= self.depth or state.isOver():
-            z= (self.getValue( state), "Stop")
-            return z
+        mindex = index % 6
+        if index >= self.depth * 6 or state.isOver():
+            return (self.getValue(state), "Stop")
         if mindex in self.getTeam(state) and state.getAgentState(mindex).configuration:
-            i=self.maxv(state, index, a, b)
-            return i
+            v = (-float('Inf'), "Stop")
+            for way in state.getLegalActions(mindex):
+                k = (self.value(state.generateSuccessor(mindex, way), index + 1, a, b)[0],way)
+                if k[0] >= v[0]:
+                    v = k
+                a= max(a, k[0])
+                if b < a:
+                    break
+            return v
         elif mindex in self.getOpponents(state) and state.getAgentState(mindex).configuration:
-            j=random.choice((self.minv, self.expv))(state, index, a, b)
-            return j
+            v = (float('Inf'), "Stop")
+            for way in state.getLegalActions(mindex):
+                k = (self.value(state.generateSuccessor(mindex, way), index + 1, a, b)[0], way)
+                if k[0] < v[0]:
+                    v = k
+                b = min(b, k[0])
+                if b < a:
+                    break
+            return v
         else:
-            return self.value(state, index+1, a, b)
-
-    def maxv(self, state, index, a, b):
-        v=(-float("inf"),'Stop')
-        nindex=(index)%6
-        for way in state.getLegalActions(nindex):
-            k=(self.value(state.generateSuccessor(nindex, way),index+1, a ,b)[0],way)
-            if k[0]>=v[0]:
-                v=k
-            if v[0]>b:
-                return v
-            if v[0]>=a:
-                a=v[0]
-        return v
-
-    def minv(self, state, index, a, b):
-        v=(float("inf"),'Stop')
-        nindex=(index)%6
-        for way in state.getLegalActions(nindex):
-            k=(self.value(state.generateSuccessor(nindex, way),index+1, a, b)[0],way)
-            if k[0]<=v[0]:
-                v=k
-            if v[0]<a:
-                return v
-            if v[0]<=b:
-                b=v[0]
-        return v
-    def expv(self, state, index, a, b):
-        v=0 
-        nindex=(index)%6
-        for way in state.getLegalActions(nindex):
-            p=1.0/len(state.getLegalActions(nindex))
-            k=(self.value(state.generateSuccessor(nindex, way),index+1, a, b)[0],way)
-            v+=p * k[0]
-        return (v, way)
-
+          return self.value(state, index+1, a, b)
 
     def getSuccessor(self, gameState, action):
         successor = gameState.generateSuccessor(self.index, action)
         return successor
     def getFeatures(self, state, action):
         features = util.Counter()
-        Food = list(self.getFood(state))
-        DefFood = self.getFoodYouAreDefending(state).asList()
-        walls = state.getWalls()
         myState = state.getAgentState(self.index)
         successor = state.generateSuccessor(self.index, action)
-        newFood = list(self.getFood(successor))
-        newDefFood = self.getFoodYouAreDefending(successor).asList()
         newState = successor.getAgentState(self.index)
-        newWalls = successor.getWalls()
         features['successorScore'] = self.getScore(successor)
         foodList = self.getFood(successor).asList()    
         features['has-food'] = len(foodList)
         myPos = int(myState.getPosition()[0]), int(myState.getPosition()[1])
         newPos = int(newState.getPosition()[0]), int(newState.getPosition()[1])
-        newGhostStates = [(successor.getAgentState(i),i)  for i in self.getOpponents(successor) if successor.getAgentState(i).configuration]
-        newScaredTimes = [ghostState[0].scaredTimer for ghostState in newGhostStates]
-        dangerzone = []
-        scaredghost = []
-        ghostpos = []
+        
         if len(foodList) > 0:
           myPos = successor.getAgentState(self.index).getPosition()
           minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
           features['distanceToFood'] = minDistance
-
-        for i in newGhostStates:
-          if newState.isPacman or (not newState.isPacman and newState.scaredTimer) or newState.ownFlag or myState.ownFlag:
-            if newScaredTimes[newGhostStates.index(i)]==0:
-              ghostpos.append(i[0].getPosition())
-              for state in [successor.generateSuccessor(i[1], way) for way in successor.getLegalActions(i[1])]:
-                for a in [state.getAgentState(m) for m in  self.getOpponents(state) if state.getAgentState(i[1]).configuration]:
-                  if a.getPosition() and (not a.isPacman or (a.isPacman and (newState.ownFlag or myState.ownFlag))):
-                    dangerzone.append(a.getPosition())
-          else:
-            if newScaredTimes[newGhostStates.index(i)]:
-              scaredghost.append(i[0].getPosition())
-
         if features["has-food"]:
           features["goAttack"] = 1
-
-        features["in-danger"] = float(newPos in dangerzone)        
+        if state.getAgentDistances():
+          features["eat-pacman"] = min([min(state.getAgentDistances()[i],successor.getAgentDistances()[i]) for i in self.getOpponents(successor)])
         features["own-flag"]=float(myState.ownFlag or newState.ownFlag)
+        caps = self.getCapsules(state)
+        if caps:
+          features['get-caps'] = min([self.getMazeDistance(newPos, i) for i in caps])
+
+        flag = self.getFlags(state)
+        if flag:
+          features['get-flag'] = self.getMazeDistance(newPos, flag[0])
         critical_index = self.getOwnFlagOpponent(state)
         if critical_index:
           critical_pos = state.getAgentState(critical_index).getPosition()
@@ -203,7 +165,7 @@ class myAgent(ApproximateQAgent):
             features["critical-point"] = self.getMazeDistance(newPos, critical_pos)
           else:
             features["critical-point"] = self.getMazeDistance(newPos, self.myFlagPos)
-
+        features["bias"] = 1.0
         features.divideAll(3.1415926**3.1415926**3.1415926)
         return features
 
@@ -280,104 +242,58 @@ class myDAgent(ApproximateQAgent):
     def getWeights1(self, gameState, action):
         return {'numInvaders': -1000, 'onDefense': 100, 'invaderDistance': -10, 'stop': -100, 'reverse': -2}
 
-
     def value(self, state, index, a, b):
-        mindex=index%6
-        if index/6 >= self.depth or state.isOver():
-            z= (self.getValue( state), "Stop")
-            return z
+        mindex = index % 6
+        if index >= self.depth * 6 or state.isOver():
+            return (self.getValue(state), "Stop")
         if mindex in self.getTeam(state) and state.getAgentState(mindex).configuration:
-            i=self.maxv(state, index, a, b)
-            return i
+            v = (-float('Inf'), "Stop")
+            for way in state.getLegalActions(mindex):
+                k = (self.value(state.generateSuccessor(mindex, way), index + 1, a, b)[0],way)
+                if k[0] >= v[0]:
+                    v = k
+                a= max(a, k[0])
+                if b < a:
+                    break
+            return v
         elif mindex in self.getOpponents(state) and state.getAgentState(mindex).configuration:
-            j=random.choice((self.minv, self.expv))(state, index, a, b)
-            return j
+            v = (float('Inf'), "Stop")
+            for way in state.getLegalActions(mindex):
+                k = (self.value(state.generateSuccessor(mindex, way), index + 1, a, b)[0], way)
+                if k[0] < v[0]:
+                    v = k
+                b = min(b, k[0])
+                if b < a:
+                    break
+            return v
         else:
-            return self.value(state, index+1, a, b)
+          return self.value(state, index+1, a, b)
 
-    def maxv(self, state, index, a, b):
-        v=(-float("inf"),'Stop')
-        nindex=(index)%6
-        for way in state.getLegalActions(nindex):
-            k=(self.value(state.generateSuccessor(nindex, way),index+1, a ,b)[0],way)
-            if k[0]>=v[0]:
-                v=k
-            if v[0]>b:
-                return v
-            if v[0]>=a:
-                a=v[0]
-        return v
-
-    def minv(self, state, index, a, b):
-        v=(float("inf"),'Stop')
-        nindex=(index)%6
-        for way in state.getLegalActions(nindex):
-            k=(self.value(state.generateSuccessor(nindex, way),index+1, a, b)[0],way)
-            if k[0]<=v[0]:
-                v=k
-            if v[0]<a:
-                return v
-            if v[0]<=b:
-                b=v[0]
-        return v
-    def expv(self, state, index, a, b):
-        v=0 
-        nindex=(index)%6
-        for way in state.getLegalActions(nindex):
-            p=1.0/len(state.getLegalActions(nindex))
-            k=(self.value(state.generateSuccessor(nindex, way),index+1, a, b)[0],way)
-            v+=p * k[0]
-        return (v, way)
-
-
+    
     def getSuccessor(self, gameState, action):
         successor = gameState.generateSuccessor(self.index, action)
         return successor
     def getFeatures(self, state, action):
-        features = util.Counter()
-        Food = list(self.getFood(state))
-        DefFood = self.getFoodYouAreDefending(state).asList()
-        walls = state.getWalls()
+        features = util.Counter()        
         myState = state.getAgentState(self.index)
         successor = state.generateSuccessor(self.index, action)
-        newFood = list(self.getFood(successor))
-        newDefFood = self.getFoodYouAreDefending(successor).asList()
         newState = successor.getAgentState(self.index)
-        newWalls = successor.getWalls()
         features['successorScore'] = self.getScore(successor)
         foodList = self.getFood(successor).asList()    
         features['has-food'] = len(foodList)
         myPos = int(myState.getPosition()[0]), int(myState.getPosition()[1])
         newPos = int(newState.getPosition()[0]), int(newState.getPosition()[1])
-        newGhostStates = [(successor.getAgentState(i),i)  for i in self.getOpponents(successor) if successor.getAgentState(i).configuration]
-        newScaredTimes = [ghostState[0].scaredTimer for ghostState in newGhostStates]
-        dangerzone = []
-        scaredghost = []
-        ghostpos = []
+        
         if len(foodList) > 0:
           myPos = successor.getAgentState(self.index).getPosition()
           minDistance = min([self.getMazeDistance(myPos, food) for food in foodList])
           features['distanceToFood'] = minDistance
+        if not myState.isPacman:
+          features["Defending"]=1
 
-        for i in newGhostStates:
-          if newState.isPacman or (not newState.isPacman and newState.scaredTimer) or newState.ownFlag or myState.ownFlag:
-            if newScaredTimes[newGhostStates.index(i)]==0:
-              ghostpos.append(i[0].getPosition())
-              for state in [successor.generateSuccessor(i[1], way) for way in successor.getLegalActions(i[1])]:
-                for a in [state.getAgentState(m) for m in  self.getOpponents(state) if state.getAgentState(i[1]).configuration]:
-                  if a.getPosition() and (not a.isPacman or (a.isPacman and (newState.ownFlag or myState.ownFlag))):
-                    dangerzone.append(a.getPosition())
-          else:
-            if newScaredTimes[newGhostStates.index(i)]:
-              scaredghost.append(i[0].getPosition())
-
-        if features["has-food"]:
-          features["goAttack"] = 1
-        
         if state.getAgentDistances():
-          features["eat-pacman"] = -min([min(state.getAgentDistances()[i],successor.getAgentDistances()[i]) for i in self.getOpponents(successor)])          
-        features["in-danger"] = float(newPos in dangerzone)        
-        features["own-flag"]=float(myState.ownFlag or newState.ownFlag)
+          features["eat-pacman"] = min([min(state.getAgentDistances()[i],successor.getAgentDistances()[i]) for i in self.getOpponents(successor)])
+
         critical_index = self.getOwnFlagOpponent(state)
         if critical_index:
           critical_pos = state.getAgentState(critical_index).getPosition()
@@ -385,7 +301,14 @@ class myDAgent(ApproximateQAgent):
             features["critical-point"] = self.getMazeDistance(newPos, critical_pos)
           else:
             features["critical-point"] = self.getMazeDistance(newPos, self.myFlagPos)
+        enemies = [successor.getAgentState(i) for i in self.getOpponents(successor)]
+        invaders = [a for a in enemies if a.isPacman and a.getPosition() != None]
+        features['numInvaders'] = len(invaders)
+        if len(invaders) > 0:
+          dists = [self.getMazeDistance(myPos, a.getPosition()) for a in invaders]
+          features['invaderDistance'] = min(dists)
 
+        features["bias"] = 1.0
         features.divideAll(3.1415926**3.1415926**3.1415926)
         return features
 
